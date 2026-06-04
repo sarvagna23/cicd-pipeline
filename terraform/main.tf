@@ -4,10 +4,14 @@ provider "aws" {
   secret_key = var.aws_secret_key
 }
 
-# EC2 Instance
+data "aws_security_group" "existing_sg" {
+  name = "fraud-detection-sg"
+}
+
 resource "aws_instance" "api_server" {
-  ami           = "ami-000752eb6598fea3c"
-  instance_type = "t3.micro"
+  ami                    = "ami-000752eb6598fea3c"
+  instance_type          = "t3.micro"
+  vpc_security_group_ids = [data.aws_security_group.existing_sg.id]
 
   tags = {
     Name = "cicd-pipeline-api"
@@ -31,13 +35,11 @@ resource "aws_instance" "api_server" {
   EOF
 }
 
-# CloudWatch Log Group
 resource "aws_cloudwatch_log_group" "api_logs" {
   name              = "/cicd-pipeline/api"
   retention_in_days = 7
 }
 
-# CloudWatch CPU Alarm
 resource "aws_cloudwatch_metric_alarm" "cpu_alarm" {
   alarm_name          = "cicd-pipeline-cpu-high"
   comparison_operator = "GreaterThanThreshold"
@@ -51,32 +53,5 @@ resource "aws_cloudwatch_metric_alarm" "cpu_alarm" {
 
   dimensions = {
     InstanceId = aws_instance.api_server.id
-  }
-}
-
-# Security Group
-resource "aws_security_group" "api_sg" {
-  name        = "cicd-pipeline-sg"
-  description = "Security group for CI/CD pipeline API"
-
-  ingress {
-    from_port   = 8000
-    to_port     = 8000
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
   }
 }
